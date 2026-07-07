@@ -1,7 +1,7 @@
 // Configuración de Supabase
 const supabaseUrl = 'https://hnjamkdpylopbflqefyd.supabase.co';
 const supabaseKey = 'sb_publishable_p4-N9JRkDMo-jYAdNyQu5Q_Xxv_6vVs';
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
 // Estado de la aplicación
 let inventory = [];
@@ -40,7 +40,7 @@ const loadData = async () => {
     inventoryBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Cargando inventario...</td></tr>`;
     
     // Cargar productos
-    const { data: prods, error: errProds } = await supabase.from('productos').select('*').order('created_at', { ascending: false });
+    const { data: prods, error: errProds } = await supabaseClient.from('productos').select('*').order('created_at', { ascending: false });
     if (!errProds && prods) {
         inventory = prods;
         renderInventory();
@@ -49,7 +49,7 @@ const loadData = async () => {
     }
 
     // Cargar ventas
-    const { data: sales, error: errSales } = await supabase.from('ventas').select('*').order('created_at', { ascending: false });
+    const { data: sales, error: errSales } = await supabaseClient.from('ventas').select('*').order('created_at', { ascending: false });
     if (!errSales && sales) {
         salesHistory = sales;
         renderSalesHistory();
@@ -81,9 +81,14 @@ const renderInventory = () => {
         const btnText = inCart ? 'En carrito' : 'Vender';
         const btnClass = inCart ? 'btn-secondary' : 'btn-primary';
 
+        const profit = item.price - (item.cost || 0);
+        const profitClass = profit > 0 ? 'profit-positive' : 'profit-negative';
+
         tr.innerHTML = `
             <td><strong>${item.name}</strong></td>
             <td>${formatMoney(item.price)}</td>
+            <td style="color: var(--text-muted);">${formatMoney(item.cost || 0)}</td>
+            <td><span class="profit-badge ${profitClass}">${profit > 0 ? '+' : ''}${formatMoney(profit)}</span></td>
             <td>${item.stock}</td>
             <td>${statusHTML}</td>
             <td>
@@ -228,7 +233,7 @@ btnConfirmSale.addEventListener('click', async () => {
             });
 
             // Actualizar stock en Supabase
-            await supabase.from('productos').update({ stock: newStock }).eq('id', id);
+            await supabaseClient.from('productos').update({ stock: newStock }).eq('id', id);
         }
     }
 
@@ -239,7 +244,7 @@ btnConfirmSale.addEventListener('click', async () => {
         method: paymentMethodSelect.value
     };
     
-    await supabase.from('ventas').insert([saleRecord]);
+    await supabaseClient.from('ventas').insert([saleRecord]);
 
     // Limpiar y recargar
     cart = {};
@@ -312,17 +317,19 @@ formAddProduct.addEventListener('submit', async (e) => {
     submitBtn.innerText = "Guardando en la nube...";
 
     const name = document.getElementById('prod-name').value;
+    const cost = parseFloat(document.getElementById('prod-cost').value);
     const price = parseFloat(document.getElementById('prod-price').value);
     const stock = parseInt(document.getElementById('prod-stock').value);
 
     const newProduct = {
         name,
+        cost,
         price,
         stock
     };
 
     // Guardar en Supabase
-    const { data, error } = await supabase.from('productos').insert([newProduct]).select();
+    const { data, error } = await supabaseClient.from('productos').insert([newProduct]).select();
     
     if (!error) {
         // Recargar inventario
@@ -354,4 +361,3 @@ btnCloseCart.addEventListener('click', () => toggleCart(false));
 
 // Inicialización: Cargar datos de la nube
 loadData();
-
