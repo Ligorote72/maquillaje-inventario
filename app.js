@@ -354,3 +354,4 @@ btnCloseCart.addEventListener('click', () => toggleCart(false));
 
 // Inicialización: Cargar datos de la nube
 loadData();
+
